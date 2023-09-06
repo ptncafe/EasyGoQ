@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	amqp "github.com/rabbitmq/amqp091-go"
-
-	"log"
 )
 
 type HandlerConsumer[T any] func(data T) error
@@ -85,7 +83,6 @@ func handle[T any](conmonConsumer CoreConsumer, deliveries <-chan amqp.Delivery,
 	}
 	//wait.Wait()
 	logger.Warnf("handle: deliveries channel closed")
-	log.Printf("handle: deliveries channel closed")
 	done <- nil
 }
 

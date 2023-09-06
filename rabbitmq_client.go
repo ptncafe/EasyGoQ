@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/pkg/errors"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"sync"
 	"time"
 )
 
@@ -11,6 +12,7 @@ type IRabbitMqClient interface {
 	Publish(queueName string, data interface{}) error
 	PublishError(queueName string, data []byte, table amqp.Table, errorCause error) error
 	GetChannel(isReuse bool) (*amqp.Channel, error)
+	PublishRetry(queueName string, delivery amqp.Delivery) error
 }
 
 type rabbitMqClient struct {
@@ -21,11 +23,14 @@ type rabbitMqClient struct {
 
 // singleton
 var _rabbitMqClient *rabbitMqClient
+var mu sync.Mutex
 
 func NewRabbitMqClient(connectionString string, logger ILogger, isReuse bool) (*rabbitMqClient, error) {
 	if isReuse == true && _rabbitMqClient != nil {
 		return _rabbitMqClient, nil
 	}
+	mu.Lock()
+	defer mu.Unlock()
 	rabbitMqConnection, err := amqp.Dial(connectionString)
 	if err != nil {
 		logger.Errorf("InitConnectionRabbitMq %+v", errors.Wrap(err, "InitConnectionRabbitMq Dial"))
@@ -125,4 +130,8 @@ func (rabbitMqClient *rabbitMqClient) GetChannel(isReuse bool) (*amqp.Channel, e
 	}
 	//defer rabbitMqChannel.Close()
 	return rabbitMqChannel, nil
+}
+
+func (rabbitMqClient *rabbitMqClient) Close() error {
+	return rabbitMqClient.Connection.Close()
 }
